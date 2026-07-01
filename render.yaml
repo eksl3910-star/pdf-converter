@@ -37,5 +37,4 @@ services:
       - key: TEMP_DIR
         value: /tmp/conversions
       - key: SITE_PASSWORD
-        generateValue: true
-        sync: false
+        value: ""
