@@ -1,0 +1,39 @@
+# Hugging Face Spaces용 (올인원: Next.js + LibreOffice + pdf2docx)
+# 카드 없음 / PC 꺼도 됨 / 무료
+
+FROM node:22-bookworm AS builder
+WORKDIR /app
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm run build
+
+FROM node:22-bookworm AS runner
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ghostscript \
+    poppler-utils \
+    python3 \
+    python3-pip \
+    libreoffice-writer \
+    libreoffice-calc \
+    libreoffice-impress \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY services/pdf2docx/requirements.txt ./services/pdf2docx/
+RUN pip3 install --no-cache-dir -r ./services/pdf2docx/requirements.txt --break-system-packages
+COPY services/pdf2docx/main.py ./services/pdf2docx/
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY scripts/start-hf.sh /start-hf.sh
+RUN chmod +x /start-hf.sh && mkdir -p /tmp/conversions
+
+ENV NODE_ENV=production
+ENV PORT=7860
+ENV HOSTNAME=0.0.0.0
+
+EXPOSE 7860
+CMD ["/start-hf.sh"]

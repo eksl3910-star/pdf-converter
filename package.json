@@ -9,6 +9,7 @@
     "setup:windows": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-windows.ps1",
     "deploy:tunnel": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-tunnel.ps1",
     "deploy:tunnel:named": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-tunnel-named.ps1",
+    "start:public": "powershell -ExecutionPolicy Bypass -File ./scripts/start-public.ps1",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

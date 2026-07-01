@@ -39,6 +39,7 @@ next-env.d.ts
 # temp
 /tmp
 /tmp/conversions
+tools/
 
 # python
 __pycache__/
