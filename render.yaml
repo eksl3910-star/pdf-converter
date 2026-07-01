@@ -1,0 +1,41 @@
+# Render.com 클라우드 배포 (터미널 없이 웹에서 클릭만)
+# https://dashboard.render.com/ → New → Blueprint → 이 repo 연결
+
+services:
+  - type: pserv
+    name: gotenberg
+    runtime: image
+    image:
+      url: docker.io/gotenberg/gotenberg:8
+    plan: starter
+    autoDeploy: true
+
+  - type: pserv
+    name: pdf2docx
+    runtime: docker
+    dockerfilePath: ./services/pdf2docx/Dockerfile
+    dockerContext: ./services/pdf2docx
+    plan: starter
+    autoDeploy: true
+
+  - type: web
+    name: pdf-converter
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GOTENBERG_URL
+        value: http://gotenberg:3000
+      - key: PDF2DOCX_URL
+        value: http://pdf2docx:8000
+      - key: MAX_FILE_SIZE
+        value: "0"
+      - key: TEMP_DIR
+        value: /tmp/conversions
+      - key: SITE_PASSWORD
+        generateValue: true
+        sync: false

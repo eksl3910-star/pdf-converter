@@ -1,0 +1,32 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      GOTENBERG_URL: http://gotenberg:3000
+      PDF2DOCX_URL: http://pdf2docx:8000
+      MAX_FILE_SIZE: "0"
+      TEMP_DIR: /tmp/conversions
+      SITE_PASSWORD: ${SITE_PASSWORD:-}
+    volumes:
+      - conversion-temp:/tmp/conversions
+    depends_on:
+      gotenberg:
+        condition: service_started
+      pdf2docx:
+        condition: service_started
+    restart: unless-stopped
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    restart: unless-stopped
+
+  pdf2docx:
+    build: ./services/pdf2docx
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+volumes:
+  conversion-temp:

@@ -1,0 +1,11 @@
+# Cloudflare Tunnel 설정 예시
+# cloudflared tunnel create pdf-converter
+# cloudflared tunnel route dns pdf-converter convert.yourdomain.com
+
+tunnel: pdf-converter
+credentials-file: C:\Users\win11pro\.cloudflared\pdf-converter.json
+
+ingress:
+  - hostname: convert.yourdomain.com
+    service: http://localhost:3000
+  - service: http_status:404

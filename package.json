@@ -1,0 +1,38 @@
+{
+  "name": "pdf-converter",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "next dev",
+    "dev:windows": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-windows.ps1",
+    "setup:windows": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-windows.ps1",
+    "deploy:tunnel": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-tunnel.ps1",
+    "deploy:tunnel:named": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-tunnel-named.ps1",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "15.3.2",
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sharp": "^0.34.2"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,9 @@
+node_modules
+.next
+tmp
+.git
+.env
+.env.local
+services/pdf2docx/.venv
+*.md
+.cursor
