@@ -1,0 +1,7 @@
+# 복사: cp Caddyfile.example Caddyfile
+# 도메인을 본인 것으로 바꾼 뒤:
+# docker compose -f docker-compose.oracle.yml --profile with-caddy up -d
+
+convert.example.com {
+    reverse_proxy app:7860
+}
