@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkBasicAuth } from "@/lib/auth";
 import { convert } from "@/lib/converters";
 import { getMaxFileSize } from "@/lib/temp-files";
 import { ConversionOption, ConversionType, InputFile } from "@/lib/types";
@@ -22,6 +23,9 @@ const VALID_TYPES: ConversionType[] = [
 
 export async function POST(request: NextRequest) {
   try {
+    const denied = checkBasicAuth(request);
+    if (denied) return denied;
+
     const formData = await request.formData();
     const type = formData.get("type") as ConversionType;
     const optionsRaw = formData.get("options");

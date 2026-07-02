@@ -83,7 +83,17 @@ export default function HomePage() {
       setStatus("done");
     } catch (error) {
       setStatus("error");
-      setErrorMessage(error instanceof Error ? error.message : "변환에 실패했습니다.");
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      const sizeMb = totalSize / 1024 / 1024;
+      if (error instanceof TypeError || (error instanceof Error && /failed|network|fetch/i.test(error.message))) {
+        setErrorMessage(
+          sizeMb > 50
+            ? `큰 파일(${sizeMb.toFixed(0)}MB)은 공개 URL에서 실패할 수 있습니다. http://localhost:13000 에서 시도하세요.`
+            : "네트워크 오류입니다. START.bat 창이 켜져 있는지 확인하거나 http://localhost:13000 에서 시도하세요.",
+        );
+      } else {
+        setErrorMessage(error instanceof Error ? error.message : "변환에 실패했습니다.");
+      }
     }
   };
 
@@ -94,6 +104,9 @@ export default function HomePage() {
           <h1 className="text-4xl font-bold tracking-tight text-slate-900">파일 변환</h1>
           <p className="mt-2 text-slate-600">
             Word, Excel, PDF, 이미지 등 다양한 형식을 빠르게 변환하세요
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
+            큰 파일(50MB+)은 공개 URL보다 http://localhost:13000 권장
           </p>
         </header>
 

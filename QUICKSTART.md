@@ -37,6 +37,8 @@ http://localhost:13000           ← 이 PC에서만
 
 > 처음 실행은 Docker 빌드 때문에 **5~15분** 걸릴 수 있습니다.
 
+> **큰 파일(50MB+):** 공개 URL(`trycloudflare.com`)에서 끊길 수 있음 → **http://localhost:13000** 사용
+
 ---
 
 ## 중지
