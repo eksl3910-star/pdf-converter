@@ -93,15 +93,24 @@ def media_filter(media_type: str, input_ref: dict, custom_name: str, filter_uuid
     }
 
 
-def save_file(input_ref: dict):
-    """Save with folder picker — preset Drive/iPhone paths need per-device bookmarks."""
+def save_file(
+    input_ref: dict,
+    *,
+    subpath: str,
+    service: str,
+):
     return {
         "WFWorkflowActionIdentifier": "is.workflow.actions.documentpicker.save",
         "WFWorkflowActionParameters": {
             "UUID": uid(),
             "WFInput": input_ref,
-            "WFAskWhereToSave": True,
+            "WFAskWhereToSave": False,
             "WFSaveFileOverwrite": True,
+            "WFFileStorageService": service,
+            "WFFileDestinationPath": {
+                "Value": {"string": subpath, "attachmentsByRange": {}},
+                "WFSerializationType": "WFTextTokenString",
+            },
         },
     }
 
@@ -215,6 +224,7 @@ def if_count_gt_zero(count_uuid: str, group_id: str, body_actions: list):
 def split_save_block(
     photos_ref: dict,
     *,
+    service: str,
     destination_label: str = "",
 ):
     """Filter photos/videos and save to configured destination."""
@@ -252,7 +262,7 @@ def split_save_block(
             count_photos_uuid,
             uid(),
             [
-                save_file(photos_filtered_ref)
+                save_file(photos_filtered_ref, subpath="맛집 리스트/사진", service=service)
             ],
         )
     )
@@ -261,7 +271,7 @@ def split_save_block(
             count_videos_uuid,
             uid(),
             [
-                save_file(videos_filtered_ref)
+                save_file(videos_filtered_ref, subpath="맛집 리스트/비디오", service=service)
             ],
         )
     )
@@ -409,6 +419,7 @@ def build():
                     uid(),
                     split_save_block(
                         photos_ref,
+                        service="Google Drive",
                         destination_label="Google Drive",
                     ),
                 ),
@@ -417,6 +428,7 @@ def build():
                     uid(),
                     split_save_block(
                         photos_ref,
+                        service="On My iPhone",
                         destination_label="내 iPhone",
                     ),
                 ),
@@ -436,8 +448,8 @@ def build():
                 "WFCommentActionText": (
                     "갤러리 전송 (단일 단축어)\n"
                     "오류 시 알림 제목: 김도훈\n"
-                    "Drive · iPhone: 사진/동영상 자동 분류 후 폴더 선택\n"
-                    "→ 맛집 리스트/사진 또는 맛집 리스트/동영상"
+                    "Drive · iPhone: 사진→맛집 리스트/사진, 동영상→맛집 리스트/비디오\n"
+                    "※ 가져온 뒤 파일 저장 동작에서 폴더를 한 번씩 지정해야 자동 저장됨"
                 ),
             },
         },
