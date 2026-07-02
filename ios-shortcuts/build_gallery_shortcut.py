@@ -23,6 +23,44 @@ def action_ref(output_uuid: str, output_name: str = "Photos"):
     }
 
 
+def variable_ref(
+    output_uuid: str,
+    output_name: str,
+    *,
+    coercion: str | None = None,
+):
+    """Conditional actions require the Variable wrapper (shows up linked in Shortcuts UI)."""
+    value: dict = {
+        "Type": "ActionOutput",
+        "OutputUUID": output_uuid,
+        "OutputName": output_name,
+    }
+    if coercion:
+        value["Aggrandizements"] = [
+            {
+                "Type": "WFCoercionVariableAggrandizement",
+                "CoercionItemClass": coercion,
+            }
+        ]
+    return {
+        "Type": "Variable",
+        "Variable": {
+            "Value": value,
+            "WFSerializationType": "WFTextTokenAttachment",
+        },
+    }
+
+
+def repeat_item_ref():
+    return {
+        "Type": "Variable",
+        "Variable": {
+            "Value": {"Type": "Variable", "VariableName": "Repeat Item"},
+            "WFSerializationType": "WFTextTokenAttachment",
+        },
+    }
+
+
 def media_filter(media_type: str, input_ref: dict, custom_name: str, filter_uuid: str):
     return {
         "WFWorkflowActionIdentifier": "is.workflow.actions.filter.images",
@@ -120,7 +158,7 @@ def if_count_gt_zero_else(
                 "UUID": uid(),
                 "GroupingIdentifier": group_id,
                 "WFControlFlowMode": 0,
-                "WFInput": action_ref(count_uuid, count_name),
+                "WFInput": variable_ref(count_uuid, count_name, coercion="WFNumberContentItem"),
                 "WFCondition": 2,
                 "WFNumberValue": "0",
             },
@@ -154,7 +192,7 @@ def if_count_gt_zero(count_uuid: str, group_id: str, body_actions: list):
                 "UUID": uid(),
                 "GroupingIdentifier": group_id,
                 "WFControlFlowMode": 0,
-                "WFInput": action_ref(count_uuid, "Count"),
+                "WFInput": variable_ref(count_uuid, "Count", coercion="WFNumberContentItem"),
                 "WFCondition": 2,
                 "WFNumberValue": "0",
             },
@@ -242,10 +280,7 @@ def if_repeat_item_equals(text: str, group_id: str, body_actions: list):
                 "UUID": uid(),
                 "GroupingIdentifier": group_id,
                 "WFControlFlowMode": 0,
-                "WFInput": {
-                    "Value": {"Type": "Variable", "VariableName": "Repeat Item"},
-                    "WFSerializationType": "WFTextTokenAttachment",
-                },
+                "WFInput": repeat_item_ref(),
                 "WFCondition": 4,
                 "WFConditionalActionString": text,
             },
