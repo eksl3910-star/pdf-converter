@@ -1,26 +1,34 @@
-# 갤러리 전송 단축어
+# 갤러리 전송 + 김도훈 (오류 알림)
 
-## 메뉴 (여러 개 선택 가능)
+## 필요한 단축어 2개
 
-- 카카오톡 나에게 보내기
-- Google Drive
-- 내 iPhone
+1. **김도훈** — 오류 메시지 → 알림 (제목: 김도훈)
+2. **갤러리 전송** — 갤러리 선택 → 여러 곳 전송
 
-예: Drive + 내 iPhone 동시 선택 → 둘 다 저장
+`kim-dohoon.shortcut` = 김도훈 템플릿 (무작위 없음, 입력 → 알림)
 
-## 폴더 (Drive · 내 iPhone)
+## 확인 가능한 오류 → 모두 김도훈 알림
 
-```
-맛집 리스트/사진
-맛집 리스트/동영상
-```
+| 상황 | 김도훈 메시지 |
+|------|----------------|
+| 사진·동영상 미선택 | 사진이나 동영상을 선택하지 않았어. |
+| 보낼 곳 미선택 | 보낼 곳을 하나 이상 선택해줘. |
+| Drive 저장 불가 | Google Drive 저장 실패: 사진·동영상으로 인식된 파일이 없어. |
+| 내 iPhone 저장 불가 | 내 iPhone 저장 실패: 사진·동영상으로 인식된 파일이 없어. |
 
-사진·동영상 자동 분류. 카카오톡은 구분 없이 공유.
+※ 폴더 없음·권한 오류 등 **실행 중 실패**는 iOS 제한으로 김도훈 자동 호출 불가
 
 ## Mac 설치
 
 ```bash
 cd ~/Downloads
-curl -L -o gallery-transfer.shortcut "https://github.com/eksl3910-star/pdf-converter/raw/cursor/gallery-shortcut-4ecd/ios-shortcuts/gallery-transfer.shortcut"
-shortcuts sign -m anyone -i gallery-transfer.shortcut -o signed.shortcut
+# 두 파일 모두 서명 후 iPhone으로 전송
+shortcuts sign -m anyone -i kim-dohoon.shortcut -o signed-kim.shortcut
+shortcuts sign -m anyone -i gallery-transfer.shortcut -o signed-gallery.shortcut
 ```
+
+## 김도훈 단축어 (직접 만든 경우)
+
+무작위·텍스트 목록 **삭제** → **단축어 입력** → **알림**(제목 김도훈, 본문 입력)
+
+이름이 **「김도훈」** 이어야 갤러리 전송에서 찾습니다.

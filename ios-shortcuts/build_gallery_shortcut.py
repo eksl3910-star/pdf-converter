@@ -81,20 +81,25 @@ def save_file(
     }
 
 
-def kim_notification(message: str):
-    """iMessage-style banner: title 김도훈 + error body."""
+def run_kim(message: str):
+    """Run user's 「김도훈」 shortcut → notification with error text."""
     return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
+        "WFWorkflowActionIdentifier": "is.workflow.actions.runworkflow",
         "WFWorkflowActionParameters": {
             "UUID": uid(),
-            "WFNotificationActionTitle": "김도훈",
-            "WFNotificationActionBody": {
+            "WFWorkflowName": "김도훈",
+            "WFWorkflow": {"workflowName": "김도훈", "isSelf": False},
+            "WFInput": {
                 "Value": {"string": message, "attachmentsByRange": {}},
                 "WFSerializationType": "WFTextTokenString",
             },
-            "WFNotificationActionSound": True,
         },
     }
+
+
+def run_kim_fatal(message: str):
+    """Notify via 김도훈 and stop the shortcut."""
+    return [run_kim(message), exit_shortcut()]
 
 
 def exit_shortcut():
@@ -102,6 +107,17 @@ def exit_shortcut():
         "WFWorkflowActionIdentifier": "is.workflow.actions.exit",
         "WFWorkflowActionParameters": {"UUID": uid()},
     }
+
+
+def if_no_media_to_save(photo_count_uuid: str, video_count_uuid: str, destination_label: str):
+    """When neither photos nor videos matched after filter."""
+    msg = f"{destination_label} 저장 실패: 사진·동영상으로 인식된 파일이 없어."
+    return if_count_gt_zero_else(
+        photo_count_uuid,
+        "Count",
+        [],
+        if_count_gt_zero_else(video_count_uuid, "Count", [], [run_kim(msg)]),
+    )
 
 
 def if_count_gt_zero_else(
@@ -239,6 +255,10 @@ def split_save_block(
             ],
         )
     )
+    if destination_label:
+        actions.extend(
+            if_no_media_to_save(count_photos_uuid, count_videos_uuid, destination_label)
+        )
     return actions
 
 
@@ -348,6 +368,56 @@ def alert(title: str, message: str):
     }
 
 
+def build_kim():
+    """Helper shortcut: receives error text → notification from 김도훈."""
+    return {
+        "WFWorkflowActions": [
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
+                "WFWorkflowActionParameters": {
+                    "WFCommentActionText": "단축어 입력 = 오류 메시지 → 알림 제목 김도훈",
+                },
+            },
+            {
+                "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
+                "WFWorkflowActionParameters": {
+                    "UUID": uid(),
+                    "WFNotificationActionTitle": "김도훈",
+                    "WFNotificationActionBody": {
+                        "Value": {
+                            "string": "￼",
+                            "attachmentsByRange": {
+                                "{0, 1}": {
+                                    "Type": "Variable",
+                                    "VariableName": "Shortcut Input",
+                                }
+                            },
+                        },
+                        "WFSerializationType": "WFTextTokenString",
+                    },
+                    "WFNotificationActionSound": True,
+                },
+            },
+        ],
+        "WFWorkflowClientRelease": "2.0",
+        "WFWorkflowClientVersion": "900",
+        "WFWorkflowMinimumClientVersion": 900,
+        "WFWorkflowMinimumClientVersionString": "900",
+        "WFWorkflowName": "김도훈",
+        "WFWorkflowImportQuestions": [],
+        "WFWorkflowTypes": [],
+        "WFWorkflowInputContentItemClasses": [
+            "WFStringContentItem",
+            "WFTextContentItem",
+        ],
+        "WFWorkflowOutputContentItemClasses": [],
+        "WFWorkflowIcon": {
+            "WFWorkflowIconGlyphNumber": 59511,
+            "WFWorkflowIconStartColor": 4282601983,
+        },
+    }
+
+
 def build():
     photos_uuid = uid()
     photos_ref = action_ref(photos_uuid, "Photos")
@@ -419,8 +489,7 @@ def build():
                 alert("완료", "선택한 곳으로 전송·저장했습니다."),
             ],
             [
-                kim_notification("보낼 곳을 하나 이상 선택해줘."),
-                exit_shortcut(),
+                *run_kim_fatal("보낼 곳을 하나 이상 선택해줘."),
             ],
         ),
     ]
@@ -430,8 +499,8 @@ def build():
             "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
             "WFWorkflowActionParameters": {
                 "WFCommentActionText": (
-                    "갤러리 → 목적지 여러 개 선택 가능\n"
-                    "오류 시 김도훈 알림으로 표시\n"
+                    "필수: 「김도훈」 단축어 (입력 → 알림, 제목 김도훈)\n"
+                    "확인 가능한 오류는 모두 김도훈으로 알림\n"
                     "Drive · iPhone: 맛집 리스트/사진 · 동영상 자동 분류"
                 ),
             },
@@ -456,8 +525,7 @@ def build():
             "Count",
             after_photos_selected,
             [
-                kim_notification("사진이나 동영상을 선택하지 않았어."),
-                exit_shortcut(),
+                *run_kim_fatal("사진이나 동영상을 선택하지 않았어."),
             ],
         ),
     ]
@@ -481,8 +549,15 @@ def build():
 
 
 def main():
-    workflow = build()
-    for path in (OUT, WORKSPACE_OUT):
+    gallery = build()
+    kim = build_kim()
+    outputs = [
+        (OUT, gallery),
+        (WORKSPACE_OUT, gallery),
+        (OUT.parent / "김도훈.shortcut", kim),
+        (Path("/workspace/ios-shortcuts/kim-dohoon.shortcut"), kim),
+    ]
+    for path, workflow in outputs:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("wb") as f:
             plistlib.dump(workflow, f, fmt=plistlib.FMT_BINARY)
