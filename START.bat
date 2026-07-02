@@ -13,6 +13,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-public.p
 
 if errorlevel 1 (
     echo.
-    echo  실행 실패. Docker Desktop 실행 여부를 확인하세요.
+    echo  Tunnel failed. Docker may still be running.
+    echo  Try local: http://localhost:13000
+    echo  Or run START.bat again.
     pause
 )

@@ -1,4 +1,7 @@
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
@@ -54,40 +57,60 @@ function Wait-ForApp {
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  PDF 변환 - 공개 실행 (이 프로젝트 전용)" -ForegroundColor Cyan
+Write-Host "  PDF Converter - Public (pdf-converter only)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "  로컬:   $LocalUrl" -ForegroundColor White
-Write-Host "  포트:   $LocalPort (다른 프로젝트 3000과 분리)" -ForegroundColor DarkGray
-Write-Host "  Docker: $ProjectName 컨테이너만 사용" -ForegroundColor DarkGray
+Write-Host "  Local:  $LocalUrl" -ForegroundColor White
+Write-Host "  Port:   $LocalPort (not 3000)" -ForegroundColor DarkGray
 Write-Host ""
 
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
     throw "Docker Desktop을 먼저 실행해 주세요."
 }
 
-Write-Host "[1/2] Docker 시작 (pdf-converter 전용)..." -ForegroundColor Yellow
+Write-Host "[1/2] Docker start..." -ForegroundColor Yellow
 docker compose -f $ComposeFile -p $ProjectName up -d --build
 
 if (-not (Wait-ForApp)) {
     Write-Host ""
-    Write-Host "앱이 아직 준비되지 않았습니다. 로그 확인:" -ForegroundColor Red
+    Write-Host "App not ready. Check logs:" -ForegroundColor Red
     Write-Host "  docker compose -f $ComposeFile -p $ProjectName logs -f" -ForegroundColor White
-    throw "시작 시간 초과"
+    throw "Timeout"
 }
 
-Write-Host "[2/2] 공개 URL 생성 중..." -ForegroundColor Yellow
+Write-Host "[2/2] Cloudflare Tunnel..." -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  곧 https://....trycloudflare.com 주소가 나옵니다." -ForegroundColor Green
-Write-Host "  종료: Ctrl+C  |  완전 중지: STOP.bat" -ForegroundColor DarkGray
+Write-Host "  Public URL: https://....trycloudflare.com (below)" -ForegroundColor Green
+Write-Host "  Local URL:  $LocalUrl" -ForegroundColor Green
+Write-Host "  Stop tunnel: Ctrl+C  |  Stop all: STOP.bat" -ForegroundColor DarkGray
 Write-Host ""
 
 $bin = Ensure-Cloudflared
 
-& $bin tunnel --url $LocalUrl 2>&1 | ForEach-Object {
-    $line = "$_"
-    Write-Host $line
-    if ($line -match "(https://[a-z0-9-]+\.trycloudflare\.com)") {
-        Set-Content -Path $urlFile -Value $Matches[1] -Encoding UTF8
+# cloudflared logs to stderr; Stop treats that as fatal without this
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+
+try {
+    & $bin tunnel --url $LocalUrl 2>&1 | ForEach-Object {
+        if ($_ -is [System.Management.Automation.ErrorRecord]) {
+            $line = $_.ToString()
+        } else {
+            $line = "$_"
+        }
+
+        Write-Host $line
+
+        if ($line -match "(https://[^\s]+\.trycloudflare\.com)") {
+            $publicUrl = $Matches[1]
+            Set-Content -Path $urlFile -Value $publicUrl -Encoding UTF8
+            Write-Host ""
+            Write-Host "========================================" -ForegroundColor Green
+            Write-Host "  PUBLIC URL: $publicUrl" -ForegroundColor Green
+            Write-Host "========================================" -ForegroundColor Green
+            Write-Host ""
+        }
     }
+} finally {
+    $ErrorActionPreference = $prevEap
 }
