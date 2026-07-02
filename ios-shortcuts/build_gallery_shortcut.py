@@ -248,8 +248,8 @@ def build():
             "WFWorkflowActionParameters": {
                 "WFCommentActionText": (
                     "갤러리 → 카카오톡 / Google Drive / 내 iPhone\n"
-                    "내 iPhone: 맛집 리스트/사진 · 동영상\n"
-                    "Google Drive: 저장 시 폴더 선택 (파일 앱 Drive 연동 필요)"
+                    "Google Drive · 내 iPhone: 맛집 리스트/사진 · 동영상 자동 분류\n"
+                    "※ Google Drive는 단축어 설치 후 파일 저장 위치를 Drive로 한 번만 지정"
                 ),
             },
         },
@@ -274,18 +274,18 @@ def build():
             "WFWorkflowActionIdentifier": "is.workflow.actions.share",
             "WFWorkflowActionParameters": {"UUID": uid(), "WFInput": photos_ref},
         },
-        # 2) Google Drive
+        # 2) Google Drive — auto split into 맛집 리스트/사진 · 동영상 (no per-run folder pick)
         menu_item(main_menu_gid, "Google Drive"),
         *split_save_block(
             photos_ref,
-            photo_path=None,
-            video_path=None,
-            ask_where=True,
-            service=None,
+            photo_path="맛집 리스트/사진",
+            video_path="맛집 리스트/동영상",
+            ask_where=False,
+            service="Google Drive",
         ),
         alert(
             "Google Drive",
-            "Google Drive 폴더를 선택해 저장했습니다.\n(사진·동영상 각각 폴더를 고를 수 있습니다)",
+            "맛집 리스트 폴더에 사진·동영상을 나눠 저장했습니다.",
         ),
         # 3) On My iPhone
         menu_item(main_menu_gid, "내 iPhone"),
