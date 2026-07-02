@@ -178,14 +178,43 @@ def split_save_block(
     return actions
 
 
-def menu_start(group_id: str, items: list[str]):
+def if_repeat_item_equals(text: str, group_id: str, body_actions: list):
+    block = [
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "UUID": uid(),
+                "GroupingIdentifier": group_id,
+                "WFControlFlowMode": 0,
+                "WFInput": {
+                    "Value": {"Type": "Variable", "VariableName": "Repeat Item"},
+                    "WFSerializationType": "WFTextTokenAttachment",
+                },
+                "WFCondition": 4,
+                "WFConditionalActionString": text,
+            },
+        }
+    ]
+    block.extend(body_actions)
+    block.append(
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "UUID": uid(),
+                "GroupingIdentifier": group_id,
+                "WFControlFlowMode": 2,
+            },
+        }
+    )
+    return block
+
+
+def destination_list(list_uuid: str, items: list[str]):
     return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.choosefrommenu",
+        "WFWorkflowActionIdentifier": "is.workflow.actions.list",
         "WFWorkflowActionParameters": {
-            "UUID": uid(),
-            "GroupingIdentifier": group_id,
-            "WFControlFlowMode": 0,
-            "WFMenuItems": [
+            "UUID": list_uuid,
+            "WFItems": [
                 {
                     "WFItemType": 0,
                     "WFValue": {
@@ -199,24 +228,42 @@ def menu_start(group_id: str, items: list[str]):
     }
 
 
-def menu_item(group_id: str, title: str):
+def choose_destinations(choose_uuid: str, list_uuid: str):
     return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.choosefrommenu",
+        "WFWorkflowActionIdentifier": "is.workflow.actions.choosefromlist",
         "WFWorkflowActionParameters": {
-            "UUID": uid(),
-            "GroupingIdentifier": group_id,
-            "WFControlFlowMode": 1,
-            "WFMenuItemTitle": title,
+            "UUID": choose_uuid,
+            "WFInput": action_ref(list_uuid, "List"),
+            "WFChooseFromListActionSelectMultiple": True,
+            "WFChooseFromListActionPrompt": {
+                "Value": {
+                    "string": "어디로 보낼까요? (여러 개 선택 가능)",
+                    "attachmentsByRange": {},
+                },
+                "WFSerializationType": "WFTextTokenString",
+            },
         },
     }
 
 
-def menu_end(group_id: str):
+def repeat_each_start(repeat_gid: str, choose_uuid: str):
     return {
-        "WFWorkflowActionIdentifier": "is.workflow.actions.choosefrommenu",
+        "WFWorkflowActionIdentifier": "is.workflow.actions.repeat.each",
         "WFWorkflowActionParameters": {
             "UUID": uid(),
-            "GroupingIdentifier": group_id,
+            "GroupingIdentifier": repeat_gid,
+            "WFControlFlowMode": 0,
+            "WFInput": action_ref(choose_uuid, "Chosen Item"),
+        },
+    }
+
+
+def repeat_each_end(repeat_gid: str):
+    return {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.repeat.each",
+        "WFWorkflowActionParameters": {
+            "UUID": uid(),
+            "GroupingIdentifier": repeat_gid,
             "WFControlFlowMode": 2,
         },
     }
@@ -240,16 +287,24 @@ def alert(title: str, message: str):
 def build():
     photos_uuid = uid()
     photos_ref = action_ref(photos_uuid, "Photos")
-    main_menu_gid = uid()
+    list_uuid = uid()
+    choose_uuid = uid()
+    repeat_gid = uid()
+
+    kakao = "카카오톡 나에게 보내기"
+    drive = "Google Drive"
+    iphone = "내 iPhone"
+    destinations = [kakao, drive, iphone]
 
     actions = [
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
             "WFWorkflowActionParameters": {
                 "WFCommentActionText": (
-                    "갤러리 → 카카오톡 / Google Drive / 내 iPhone\n"
-                    "Google Drive · 내 iPhone: 맛집 리스트/사진 · 동영상 자동 분류\n"
-                    "※ Google Drive는 단축어 설치 후 파일 저장 위치를 Drive로 한 번만 지정"
+                    "갤러리 → 목적지 여러 개 선택 가능\n"
+                    "카카오톡 / Google Drive / 내 iPhone\n"
+                    "Drive · iPhone: 맛집 리스트/사진 · 동영상 자동 분류\n"
+                    "※ Google Drive는 설치 후 파일 저장 위치를 Drive로 한 번만 지정"
                 ),
             },
         },
@@ -260,44 +315,43 @@ def build():
                 "WFSelectMultiplePhotos": True,
             },
         },
-        menu_start(
-            main_menu_gid,
+        destination_list(list_uuid, destinations),
+        choose_destinations(choose_uuid, list_uuid),
+        repeat_each_start(repeat_gid, choose_uuid),
+        *if_repeat_item_equals(
+            kakao,
+            uid(),
             [
-                "카카오톡 나에게 보내기",
-                "Google Drive",
-                "내 iPhone",
+                {
+                    "WFWorkflowActionIdentifier": "is.workflow.actions.share",
+                    "WFWorkflowActionParameters": {"UUID": uid(), "WFInput": photos_ref},
+                }
             ],
         ),
-        # 1) KakaoTalk
-        menu_item(main_menu_gid, "카카오톡 나에게 보내기"),
-        {
-            "WFWorkflowActionIdentifier": "is.workflow.actions.share",
-            "WFWorkflowActionParameters": {"UUID": uid(), "WFInput": photos_ref},
-        },
-        # 2) Google Drive — auto split into 맛집 리스트/사진 · 동영상 (no per-run folder pick)
-        menu_item(main_menu_gid, "Google Drive"),
-        *split_save_block(
-            photos_ref,
-            photo_path="맛집 리스트/사진",
-            video_path="맛집 리스트/동영상",
-            ask_where=False,
-            service="Google Drive",
+        *if_repeat_item_equals(
+            drive,
+            uid(),
+            split_save_block(
+                photos_ref,
+                photo_path="맛집 리스트/사진",
+                video_path="맛집 리스트/동영상",
+                ask_where=False,
+                service="Google Drive",
+            ),
         ),
-        alert(
-            "Google Drive",
-            "맛집 리스트 폴더에 사진·동영상을 나눠 저장했습니다.",
+        *if_repeat_item_equals(
+            iphone,
+            uid(),
+            split_save_block(
+                photos_ref,
+                photo_path="맛집 리스트/사진",
+                video_path="맛집 리스트/동영상",
+                ask_where=False,
+                service="On My iPhone",
+            ),
         ),
-        # 3) On My iPhone
-        menu_item(main_menu_gid, "내 iPhone"),
-        *split_save_block(
-            photos_ref,
-            photo_path="맛집 리스트/사진",
-            video_path="맛집 리스트/동영상",
-            ask_where=False,
-            service="On My iPhone",
-        ),
-        alert("저장 완료", "내 iPhone의 맛집 리스트 폴더에 저장했습니다."),
-        menu_end(main_menu_gid),
+        repeat_each_end(repeat_gid),
+        alert("완료", "선택한 곳으로 전송·저장했습니다."),
     ]
 
     return {
