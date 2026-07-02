@@ -81,6 +81,69 @@ def save_file(
     }
 
 
+def kim_notification(message: str):
+    """iMessage-style banner: title 김도훈 + error body."""
+    return {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.notification",
+        "WFWorkflowActionParameters": {
+            "UUID": uid(),
+            "WFNotificationActionTitle": "김도훈",
+            "WFNotificationActionBody": {
+                "Value": {"string": message, "attachmentsByRange": {}},
+                "WFSerializationType": "WFTextTokenString",
+            },
+            "WFNotificationActionSound": True,
+        },
+    }
+
+
+def exit_shortcut():
+    return {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.exit",
+        "WFWorkflowActionParameters": {"UUID": uid()},
+    }
+
+
+def if_count_gt_zero_else(
+    count_uuid: str,
+    count_name: str,
+    then_actions: list,
+    else_actions: list,
+):
+    group_id = uid()
+    return [
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "UUID": uid(),
+                "GroupingIdentifier": group_id,
+                "WFControlFlowMode": 0,
+                "WFInput": action_ref(count_uuid, count_name),
+                "WFCondition": 2,
+                "WFNumberValue": "0",
+            },
+        },
+        *then_actions,
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "UUID": uid(),
+                "GroupingIdentifier": group_id,
+                "WFControlFlowMode": 1,
+            },
+        },
+        *else_actions,
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.conditional",
+            "WFWorkflowActionParameters": {
+                "UUID": uid(),
+                "GroupingIdentifier": group_id,
+                "WFControlFlowMode": 2,
+            },
+        },
+    ]
+
+
 def if_count_gt_zero(count_uuid: str, group_id: str, body_actions: list):
     block = [
         {
@@ -116,6 +179,7 @@ def split_save_block(
     video_path: str | None,
     ask_where: bool,
     service: str | None,
+    destination_label: str = "",
 ):
     """Filter photos/videos and save to configured destination."""
     filter_photos_uuid = uid()
@@ -287,8 +351,10 @@ def alert(title: str, message: str):
 def build():
     photos_uuid = uid()
     photos_ref = action_ref(photos_uuid, "Photos")
+    photos_count_uuid = uid()
     list_uuid = uid()
     choose_uuid = uid()
+    chosen_count_uuid = uid()
     repeat_gid = uid()
 
     kakao = "카카오톡 나에게 보내기"
@@ -296,15 +362,77 @@ def build():
     iphone = "내 iPhone"
     destinations = [kakao, drive, iphone]
 
+    after_photos_selected = [
+        destination_list(list_uuid, destinations),
+        choose_destinations(choose_uuid, list_uuid),
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.count",
+            "WFWorkflowActionParameters": {
+                "UUID": chosen_count_uuid,
+                "WFCountType": "Items",
+                "Input": action_ref(choose_uuid, "Chosen Item"),
+            },
+        },
+        *if_count_gt_zero_else(
+            chosen_count_uuid,
+            "Count",
+            [
+                repeat_each_start(repeat_gid, choose_uuid),
+                *if_repeat_item_equals(
+                    kakao,
+                    uid(),
+                    [
+                        {
+                            "WFWorkflowActionIdentifier": "is.workflow.actions.share",
+                            "WFWorkflowActionParameters": {
+                                "UUID": uid(),
+                                "WFInput": photos_ref,
+                            },
+                        }
+                    ],
+                ),
+                *if_repeat_item_equals(
+                    drive,
+                    uid(),
+                    split_save_block(
+                        photos_ref,
+                        photo_path="맛집 리스트/사진",
+                        video_path="맛집 리스트/동영상",
+                        ask_where=False,
+                        service="Google Drive",
+                        destination_label="Google Drive",
+                    ),
+                ),
+                *if_repeat_item_equals(
+                    iphone,
+                    uid(),
+                    split_save_block(
+                        photos_ref,
+                        photo_path="맛집 리스트/사진",
+                        video_path="맛집 리스트/동영상",
+                        ask_where=False,
+                        service="On My iPhone",
+                        destination_label="내 iPhone",
+                    ),
+                ),
+                repeat_each_end(repeat_gid),
+                alert("완료", "선택한 곳으로 전송·저장했습니다."),
+            ],
+            [
+                kim_notification("보낼 곳을 하나 이상 선택해줘."),
+                exit_shortcut(),
+            ],
+        ),
+    ]
+
     actions = [
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
             "WFWorkflowActionParameters": {
                 "WFCommentActionText": (
                     "갤러리 → 목적지 여러 개 선택 가능\n"
-                    "카카오톡 / Google Drive / 내 iPhone\n"
-                    "Drive · iPhone: 맛집 리스트/사진 · 동영상 자동 분류\n"
-                    "※ Google Drive는 설치 후 파일 저장 위치를 Drive로 한 번만 지정"
+                    "오류 시 김도훈 알림으로 표시\n"
+                    "Drive · iPhone: 맛집 리스트/사진 · 동영상 자동 분류"
                 ),
             },
         },
@@ -315,43 +443,23 @@ def build():
                 "WFSelectMultiplePhotos": True,
             },
         },
-        destination_list(list_uuid, destinations),
-        choose_destinations(choose_uuid, list_uuid),
-        repeat_each_start(repeat_gid, choose_uuid),
-        *if_repeat_item_equals(
-            kakao,
-            uid(),
+        {
+            "WFWorkflowActionIdentifier": "is.workflow.actions.count",
+            "WFWorkflowActionParameters": {
+                "UUID": photos_count_uuid,
+                "WFCountType": "Items",
+                "Input": photos_ref,
+            },
+        },
+        *if_count_gt_zero_else(
+            photos_count_uuid,
+            "Count",
+            after_photos_selected,
             [
-                {
-                    "WFWorkflowActionIdentifier": "is.workflow.actions.share",
-                    "WFWorkflowActionParameters": {"UUID": uid(), "WFInput": photos_ref},
-                }
+                kim_notification("사진이나 동영상을 선택하지 않았어."),
+                exit_shortcut(),
             ],
         ),
-        *if_repeat_item_equals(
-            drive,
-            uid(),
-            split_save_block(
-                photos_ref,
-                photo_path="맛집 리스트/사진",
-                video_path="맛집 리스트/동영상",
-                ask_where=False,
-                service="Google Drive",
-            ),
-        ),
-        *if_repeat_item_equals(
-            iphone,
-            uid(),
-            split_save_block(
-                photos_ref,
-                photo_path="맛집 리스트/사진",
-                video_path="맛집 리스트/동영상",
-                ask_where=False,
-                service="On My iPhone",
-            ),
-        ),
-        repeat_each_end(repeat_gid),
-        alert("완료", "선택한 곳으로 전송·저장했습니다."),
     ]
 
     return {
