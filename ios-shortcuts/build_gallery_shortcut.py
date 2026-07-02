@@ -487,10 +487,11 @@ def build():
             "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
             "WFWorkflowActionParameters": {
                 "WFCommentActionText": (
-                    "갤러리 전송 (단일 단축어)\n"
+                    "갤러리 전송 v3\n"
                     "오류 시 알림 제목: 김도훈\n"
-                    "사진·비디오는 필터로 나뉘어 각각 다른 파일 저장 동작 사용\n"
-                    "※ 가져올 때 폴더 4개(사진/비디오 × Drive/iPhone) 각각 지정"
+                    "사진·비디오 필터 분리 → 사진/비디오 폴더 각각 저장\n"
+                    "카카오톡: 공유 시트에서 직접 선택 (자동 불가)\n"
+                    "※ 가져올 때 파일 저장 4개 폴더 각각 지정"
                 ),
             },
         },
