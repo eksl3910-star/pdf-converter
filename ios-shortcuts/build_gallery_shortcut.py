@@ -93,6 +93,13 @@ def media_filter(media_type: str, input_ref: dict, custom_name: str, filter_uuid
     }
 
 
+def comment(text: str):
+    return {
+        "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
+        "WFWorkflowActionParameters": {"WFCommentActionText": text},
+    }
+
+
 def save_file(
     input_ref: dict,
     *,
@@ -257,12 +264,15 @@ def split_save_block(
         },
     ]
 
+    label = destination_label or service
+
     actions.extend(
         if_count_gt_zero(
             count_photos_uuid,
             uid(),
             [
-                save_file(photos_filtered_ref, subpath="맛집 리스트/사진", service=service)
+                comment(f"📁 [{label}] 사진만 저장 → 맛집 리스트/사진 폴더"),
+                save_file(photos_filtered_ref, subpath="맛집 리스트/사진", service=service),
             ],
         )
     )
@@ -271,7 +281,8 @@ def split_save_block(
             count_videos_uuid,
             uid(),
             [
-                save_file(videos_filtered_ref, subpath="맛집 리스트/비디오", service=service)
+                comment(f"📁 [{label}] 비디오만 저장 → 맛집 리스트/비디오 폴더"),
+                save_file(videos_filtered_ref, subpath="맛집 리스트/비디오", service=service),
             ],
         )
     )
@@ -371,6 +382,32 @@ def alert(title: str, message: str):
     }
 
 
+def build_import_questions(actions: list) -> list:
+    prompts = {
+        ("맛집 리스트/사진", "Google Drive"): "Google Drive · 사진 폴더(맛집 리스트/사진)를 선택하세요",
+        ("맛집 리스트/비디오", "Google Drive"): "Google Drive · 비디오 폴더(맛집 리스트/비디오)를 선택하세요",
+        ("맛집 리스트/사진", "On My iPhone"): "내 iPhone · 사진 폴더(맛집 리스트/사진)를 선택하세요",
+        ("맛집 리스트/비디오", "On My iPhone"): "내 iPhone · 비디오 폴더(맛집 리스트/비디오)를 선택하세요",
+    }
+    questions = []
+    for i, action in enumerate(actions):
+        if action.get("WFWorkflowActionIdentifier") != "is.workflow.actions.documentpicker.save":
+            continue
+        params = action["WFWorkflowActionParameters"]
+        path = params["WFFileDestinationPath"]["Value"]["string"]
+        service = params["WFFileStorageService"]
+        questions.append(
+            {
+                "ActionIndex": i,
+                "Category": "Parameter",
+                "ParameterKey": "WFFileDestinationPath",
+                "Text": prompts.get((path, service), f"{service} · {path}"),
+                "DefaultValue": path,
+            }
+        )
+    return questions
+
+
 def build():
     photos_uuid = uid()
     photos_ref = action_ref(photos_uuid, "Photos")
@@ -448,8 +485,8 @@ def build():
                 "WFCommentActionText": (
                     "갤러리 전송 (단일 단축어)\n"
                     "오류 시 알림 제목: 김도훈\n"
-                    "Drive · iPhone: 사진→맛집 리스트/사진, 동영상→맛집 리스트/비디오\n"
-                    "※ 가져온 뒤 파일 저장 동작에서 폴더를 한 번씩 지정해야 자동 저장됨"
+                    "사진·비디오는 필터로 나뉘어 각각 다른 파일 저장 동작 사용\n"
+                    "※ 가져올 때 폴더 4개(사진/비디오 × Drive/iPhone) 각각 지정"
                 ),
             },
         },
@@ -485,7 +522,7 @@ def build():
         "WFWorkflowMinimumClientVersion": 900,
         "WFWorkflowMinimumClientVersionString": "900",
         "WFWorkflowName": "갤러리 전송",
-        "WFWorkflowImportQuestions": [],
+        "WFWorkflowImportQuestions": build_import_questions(actions),
         "WFWorkflowTypes": [],
         "WFWorkflowInputContentItemClasses": [],
         "WFWorkflowOutputContentItemClasses": [],
