@@ -40,6 +40,7 @@ next-env.d.ts
 /tmp
 /tmp/conversions
 tools/
+.public-url.txt
 
 # python
 __pycache__/

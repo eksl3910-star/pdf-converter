@@ -1,0 +1,39 @@
+# PC + Cloudflare Tunnel 전용 (다른 프로젝트와 포트/컨테이너 분리)
+# 사용: docker compose -f docker-compose.public.yml -p pdf-converter up -d
+
+name: pdf-converter
+
+services:
+  app:
+    build: .
+    container_name: pdf-converter-app
+    ports:
+      - "13000:3000"
+    environment:
+      GOTENBERG_URL: http://gotenberg:3000
+      PDF2DOCX_URL: http://pdf2docx:8000
+      MAX_FILE_SIZE: "0"
+      TEMP_DIR: /tmp/conversions
+      SITE_PASSWORD: ${SITE_PASSWORD:-}
+    volumes:
+      - pdf-converter-temp:/tmp/conversions
+    depends_on:
+      gotenberg:
+        condition: service_started
+      pdf2docx:
+        condition: service_started
+    restart: unless-stopped
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: pdf-converter-gotenberg
+    restart: unless-stopped
+
+  pdf2docx:
+    build: ./services/pdf2docx
+    container_name: pdf-converter-pdf2docx
+    restart: unless-stopped
+
+volumes:
+  pdf-converter-temp:
+    name: pdf-converter-temp
