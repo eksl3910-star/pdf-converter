@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ya-ho hidden player ad test</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; background: #1a1a2e; color: #eee; }
+    h1 { font-size: 18px; }
+    #log { background: #111; border: 1px solid #333; padding: 12px; height: 320px; overflow: auto; font: 12px/1.5 monospace; white-space: pre-wrap; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+    button, input { padding: 8px 12px; font-size: 14px; }
+    #ytPlayer {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      left: -100px;
+      top: -100px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .fake-ui { background: #d9d5c3; color: #222; padding: 12px; border-radius: 8px; max-width: 360px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Ya-ho 숨김 플레이어 광고 테스트</h1>
+  <p>원본과 동일: 1×1px, opacity:0, 화면 밖 iframe + IFrame API</p>
+  <div class="row">
+    <input id="videoId" value="kJQP7kiw5Fk" size="14" title="Despacito - usually monetized" />
+    <button id="playBtn">재생 (사용자 클릭)</button>
+    <button id="clearBtn">로그 지우기</button>
+  </div>
+  <div class="fake-ui">
+    <strong>가짜 UI (Ya-ho처럼)</strong>
+    <div id="fakeTitle">대기 중…</div>
+    <div id="fakeState">state: -</div>
+    <div id="fakeTime">time: 0:00 / 0:00</div>
+  </div>
+  <div id="ytPlayer"></div>
+  <h2>로그</h2>
+  <div id="log"></div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const adDomains = ['doubleclick', 'googleads', 'googlesyndication', 'pagead', '/api/stats/ads', 'youtube.com/api/stats/ads'];
+    window.__adRequests = [];
+    window.__stateLog = [];
+    window.__testDone = false;
+
+    function log(msg) {
+      const line = `[${new Date().toISOString().slice(11, 23)}] ${msg}`;
+      logEl.textContent += line + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(line);
+    }
+
+    // 네트워크 후킹 (페이지 내 fetch/XHR은 iframe 광고엔 안 잡힐 수 있음)
+    const origFetch = window.fetch;
+    window.fetch = function(...args) {
+      const url = String(args[0] || '');
+      if (adDomains.some(d => url.includes(d))) {
+        window.__adRequests.push(url);
+        log('📡 AD fetch: ' + url.slice(0, 120));
+      }
+      return origFetch.apply(this, args);
+    };
+
+    let yt = null, ytReady = false;
+    window.yt = null;
+    window.ytReady = false;
+    window.__readyToAutoPlay = false;
+    const STATE = { '-1': 'UNSTARTED', 0: 'ENDED', 1: 'PLAYING', 2: 'PAUSED', 3: 'BUFFERING', 5: 'CUED' };
+
+    function fmt(t) {
+      t = Math.max(0, Math.floor(t || 0));
+      return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+    }
+
+    function updateFake() {
+      if (!ytReady || !yt?.getCurrentTime) return;
+      try {
+        document.getElementById('fakeTime').textContent =
+          'time: ' + fmt(yt.getCurrentTime()) + ' / ' + fmt(yt.getDuration());
+      } catch {}
+    }
+
+    function loadYT() {
+      const s = document.createElement('script');
+      s.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(s);
+    }
+
+    window.onYouTubeIframeAPIReady = function() {
+      log('✅ IFrame API ready');
+      yt = new YT.Player('ytPlayer', {
+        height: '1',
+        width: '1',
+        playerVars: { playsinline: 1 },
+        events: {
+          onReady() {
+            ytReady = true;
+            window.yt = yt;
+            window.ytReady = true;
+            window.__readyToAutoPlay = true;
+            log('✅ Player ready (1×1 hidden)');
+            yt.setVolume(100);
+          },
+          onStateChange(e) {
+            const name = STATE[e.data] || e.data;
+            window.__stateLog.push({ t: Date.now(), state: name, data: e.data });
+            log('🎬 state → ' + name + ' (' + e.data + ')');
+            document.getElementById('fakeState').textContent = 'state: ' + name;
+            if (e.data === 1) document.getElementById('fakeTitle').textContent = '▶ 재생 중 (가짜 UI는 항상 노래처럼 보임)';
+          },
+          onError(e) {
+            log('❌ error code: ' + e.data);
+          }
+        }
+      });
+    };
+
+    document.getElementById('playBtn').onclick = () => {
+      const vid = document.getElementById('videoId').value.trim();
+      log('▶ play clicked, videoId=' + vid);
+      document.getElementById('fakeTitle').textContent = '로딩…';
+      if (!ytReady) { log('⏳ API not ready yet'); return; }
+      yt.loadVideoById(vid);
+    };
+
+    document.getElementById('clearBtn').onclick = () => { logEl.textContent = ''; };
+
+    setInterval(updateFake, 500);
+
+    loadYT();
+  </script>
+</body>
+</html>
