@@ -26,11 +26,18 @@ Word, Excel, PowerPoint, PDF, 이미지, HTML, 텍스트 파일을 변환하는 
 - **PDF 도구**: pdf-lib, Ghostscript, poppler-utils
 - **배포**: Docker Compose + Cloudflare Tunnel
 
-## 클라우드 서버 배포 (Render — 터미널 불필요)
+## 클라우드 서버 배포
 
 **Cloudflare Pages만으로는 Office 파일 변환이 불가능**합니다. (LibreOffice/Gotenberg 필요)
 
-PC를 켜 두지 않아도 되는 **클라우드 서버 배포**는 Render를 사용합니다.
+| 방법 | PC | 카드 | 내 도메인 | 슬립 | 가이드 |
+|------|-----|------|-----------|------|--------|
+| **Oracle Cloud (추천)** | 불필요 | 본인 확인만 | ✅ | 없음 | [`ORACLE_DEPLOY.md`](ORACLE_DEPLOY.md) |
+| Hugging Face | 불필요 | 불필요 | ❌ | 있음 | [`HF_DEPLOY.md`](HF_DEPLOY.md) |
+| Render | 불필요 | 필요 | ✅ | 있음 | [`DEPLOY.md`](DEPLOY.md) |
+| PC + Tunnel | 필요 | 불필요 | ✅ | PC 끄면 중단 | [`NO_CARD.md`](NO_CARD.md) |
+
+PC를 켜 두지 않아도 되는 **무료 + 내 도메인** 배포는 **Oracle Cloud**를 권장합니다.
 
 ### 배포 방법 (브라우저만)
 
