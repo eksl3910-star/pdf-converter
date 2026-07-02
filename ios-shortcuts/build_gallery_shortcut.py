@@ -417,7 +417,7 @@ def build():
     chosen_count_uuid = uid()
     repeat_gid = uid()
 
-    kakao = "카카오톡 나에게 보내기"
+    kakao = "카카오톡으로 공유"
     drive = "Google Drive"
     iphone = "내 iPhone"
     destinations = [kakao, drive, iphone]
@@ -442,13 +442,17 @@ def build():
                     kakao,
                     uid(),
                     [
+                        alert(
+                            "카카오톡 공유",
+                            "다음 공유 창에서\n① 카카오톡 아이콘 탭\n② 「나에게 보내기」 채팅방 선택\n\n※ iOS는 자동 전송을 막아서 직접 눌러야 해요.",
+                        ),
                         {
                             "WFWorkflowActionIdentifier": "is.workflow.actions.share",
                             "WFWorkflowActionParameters": {
                                 "UUID": uid(),
                                 "WFInput": photos_ref,
                             },
-                        }
+                        },
                     ],
                 ),
                 *if_repeat_item_equals(
