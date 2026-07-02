@@ -241,15 +241,13 @@ def build():
     photos_uuid = uid()
     photos_ref = action_ref(photos_uuid, "Photos")
     main_menu_gid = uid()
-    storage_menu_gid = uid()
 
     actions = [
         {
             "WFWorkflowActionIdentifier": "is.workflow.actions.comment",
             "WFWorkflowActionParameters": {
                 "WFCommentActionText": (
-                    "갤러리 → 카카오톡 / iCloud / Google Drive·내 iPhone\n"
-                    "iCloud: 맛집 리스트/사진 · 동영상\n"
+                    "갤러리 → 카카오톡 / Google Drive / 내 iPhone\n"
                     "내 iPhone: 맛집 리스트/사진 · 동영상\n"
                     "Google Drive: 저장 시 폴더 선택 (파일 앱 Drive 연동 필요)"
                 ),
@@ -266,8 +264,8 @@ def build():
             main_menu_gid,
             [
                 "카카오톡 나에게 보내기",
-                "iCloud Drive에 저장",
-                "Google Drive / 내 iPhone",
+                "Google Drive",
+                "내 iPhone",
             ],
         ),
         # 1) KakaoTalk
@@ -276,20 +274,8 @@ def build():
             "WFWorkflowActionIdentifier": "is.workflow.actions.share",
             "WFWorkflowActionParameters": {"UUID": uid(), "WFInput": photos_ref},
         },
-        # 2) iCloud
-        menu_item(main_menu_gid, "iCloud Drive에 저장"),
-        *split_save_block(
-            photos_ref,
-            photo_path="맛집 리스트/사진",
-            video_path="맛집 리스트/동영상",
-            ask_where=False,
-            service="iCloud Drive",
-        ),
-        alert("저장 완료", "iCloud Drive의 맛집 리스트 폴더에 저장했습니다."),
-        # 3) Google Drive / On My iPhone sub-menu
-        menu_item(main_menu_gid, "Google Drive / 내 iPhone"),
-        menu_start(storage_menu_gid, ["Google Drive", "내 iPhone"]),
-        menu_item(storage_menu_gid, "Google Drive"),
+        # 2) Google Drive
+        menu_item(main_menu_gid, "Google Drive"),
         *split_save_block(
             photos_ref,
             photo_path=None,
@@ -301,7 +287,8 @@ def build():
             "Google Drive",
             "Google Drive 폴더를 선택해 저장했습니다.\n(사진·동영상 각각 폴더를 고를 수 있습니다)",
         ),
-        menu_item(storage_menu_gid, "내 iPhone"),
+        # 3) On My iPhone
+        menu_item(main_menu_gid, "내 iPhone"),
         *split_save_block(
             photos_ref,
             photo_path="맛집 리스트/사진",
@@ -310,7 +297,6 @@ def build():
             service="On My iPhone",
         ),
         alert("저장 완료", "내 iPhone의 맛집 리스트 폴더에 저장했습니다."),
-        menu_end(storage_menu_gid),
         menu_end(main_menu_gid),
     ]
 
